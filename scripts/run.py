@@ -23,6 +23,8 @@ from scenes import scenes_nerf, scenes_image, scenes_sdf, scenes_volume, setup_c
 from tqdm import tqdm
 
 import pyngp as ngp # noqa
+pyngp_path = 'D:/AI/instant-ngp/build'
+sys.path.append(pyngp_path)
 
 
 def parse_args():
@@ -304,6 +306,12 @@ if __name__ == "__main__":
 
 
 	if args.vdb_save:
+		import os,sys
+		os.add_dll_directory("C:/Program Files/OpenVDB/bin")
+		os.add_dll_directory("D:/vcpkg/installed/x64-windows/bin")
+		os.add_dll_directory("C:/local/boost_1_80_0/lib64-msvc-14.1")
+		sys.path.append("C:/Program Files/OpenVDB/lib/python3.10/site-packages")
+
 		import pyopenvdb as vdb
 		import numpy as np
 		# parser.add_argument("--vdb_save", default="", help="Output a openvdb volume file from the NeRF or SDF model.")
@@ -312,6 +320,9 @@ if __name__ == "__main__":
 		print(f"Generating volume and saving to {args.vdb_save}. Resolution=[{res},{res},{res}]")
 		numpyVDB = testbed.vdb( [res, res, res], -0.5 )
 		numpyArray = np.ndarray((res, res, res), float)
+		numpyArray_color_r = np.ndarray((res, res, res), float)
+		numpyArray_color_g = np.ndarray((res, res, res), float)
+		numpyArray_color_b = np.ndarray((res, res, res), float)
 		# print(numpyVDB)
 		# print(type(numpyVDB))
 		for each in numpyVDB:
@@ -337,6 +348,9 @@ if __name__ == "__main__":
 		for n in range(1,len(numpyVDB['V'])):
 			i, j, k = xyz2ijk(numpyVDB, numpyVDB['V'][n])
 			numpyArray[i][j][k] = numpyVDB['D'][n]
+			numpyArray_color_r[i][j][k] = numpyVDB['C'][n][0]
+			numpyArray_color_g[i][j][k] = numpyVDB['C'][n][1]
+			numpyArray_color_b[i][j][k] = numpyVDB['C'][n][2]
 		# print(X.shape)
 		# print(D[0][2])
 		# min=99999999999999999999999
@@ -346,10 +360,36 @@ if __name__ == "__main__":
 		# 		min = v
 		# 		print( n,'{:.80f}'.format(v))
 		vecgrid = vdb.FloatGrid()
+		vecgrid_color_r = vdb.FloatGrid()
+		vecgrid_color_g = vdb.FloatGrid()
+		vecgrid_color_b = vdb.FloatGrid()
+
+
 		vecgrid.copyFromArray(numpyArray)
 		print(vecgrid.activeVoxelCount())
 		vecgrid.name = 'density'
 		vdb.write('out.vdb', vecgrid)
+		#export color
+		#R
+		vecgrid_color_r.copyFromArray(numpyArray_color_r)
+		print(vecgrid_color_r.activeVoxelCount())
+		vecgrid_color_r.name = 'color_r'
+		vdb.write('out_color_r.vdb', vecgrid_color_r)
+		#G
+		vecgrid_color_g.copyFromArray(numpyArray_color_g)
+		print(vecgrid_color_g.activeVoxelCount())
+		vecgrid_color_g.name = 'color_g'
+		vdb.write('out_color_g.vdb', vecgrid_color_g)
+		#B
+		vecgrid_color_b.copyFromArray(numpyArray_color_b)
+		print(vecgrid_color_b.activeVoxelCount())
+		vecgrid_color_b.name = 'color_b'
+		vdb.write('out_color_b.vdb', vecgrid_color_b)
+
+		#all colors together
+		vdb.write('out_color_RGB_density.vdb', [vecgrid_color_r,vecgrid_color_g,vecgrid_color_b,vecgrid])
+		
+		
 
 	if args.width:
 		if ref_transforms:
